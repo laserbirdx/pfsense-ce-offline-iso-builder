@@ -1,0 +1,5 @@
+out/
+mirror/
+*.iso
+*.img
+*.gz
