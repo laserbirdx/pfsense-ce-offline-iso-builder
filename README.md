@@ -57,7 +57,9 @@ there is not enough. When finished, it asks whether to delete the mirror cache
 ```
 
 Works the same on Apple Silicon and Intel Macs (the produced images are always
-amd64).
+amd64). You can either clone the repository or download just
+`pfsense-ce-offline-iso-builder.sh` (or `.ps1` on Windows) — any missing files
+under `lib/` are fetched automatically on the first run.
 
 ### Windows
 

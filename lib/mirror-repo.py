@@ -16,12 +16,15 @@ import os
 import shutil
 import subprocess
 import sys
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pkgsum import verify
 
 DEFAULT_HOST = "http://pkg01-atx.netgate.com"
+CURL_BIN = os.environ.get("CURL") or shutil.which("curl")
+SEVENZ_ENV = os.environ.get("SEVENZ")
 TARGETS = [
     "pkg",
     "pfSense-base",
@@ -40,30 +43,42 @@ def extract_packagesite(pkgfile, destdir):
         return True
 
     # 1) tar with zstd support (GNU tar, recent libarchive)
-    r = subprocess.run(["tar", "xf", pkgfile, "-C", destdir],
-                       capture_output=True)
-    if r.returncode == 0 and os.path.exists(target):
-        return True
+    if shutil.which("tar"):
+        try:
+            r = subprocess.run(["tar", "xf", pkgfile, "-C", destdir],
+                               capture_output=True)
+            if r.returncode == 0 and os.path.exists(target):
+                return True
+        except OSError:
+            pass
 
     # 2) zstd + tar pipeline
-    for sevenz in ("zstd",):
-        if shutil.which(sevenz):
-            try:
-                with open(os.path.join(destdir, "_ps.tar"), "wb") as out:
-                    z = subprocess.run([sevenz, "-dc", pkgfile], stdout=out,
-                                       stderr=subprocess.DEVNULL)
-                if z.returncode == 0:
-                    subprocess.run(["tar", "xf", os.path.join(destdir, "_ps.tar"),
-                                    "-C", destdir], capture_output=True)
-                    os.unlink(os.path.join(destdir, "_ps.tar"))
-                    if os.path.exists(target):
-                        return True
-            except OSError:
-                pass
+    if shutil.which("zstd") and shutil.which("tar"):
+        try:
+            tmp_tar = os.path.join(destdir, "_ps.tar")
+            with open(tmp_tar, "wb") as out:
+                z = subprocess.run(["zstd", "-dc", pkgfile], stdout=out,
+                                   stderr=subprocess.DEVNULL)
+            if z.returncode == 0:
+                subprocess.run(["tar", "xf", tmp_tar, "-C", destdir],
+                               capture_output=True)
+            if os.path.exists(tmp_tar):
+                os.unlink(tmp_tar)
+            if os.path.exists(target):
+                return True
+        except OSError:
+            pass
 
     # 3) 7-Zip (two steps: .pkg -> .tar -> contents)
-    for sevenz in ("7z", "7zz", "7za"):
-        if shutil.which(sevenz):
+    sevenz_cands = []
+    if SEVENZ_ENV:
+        sevenz_cands.append(SEVENZ_ENV)
+    for name in ("7z", "7zz", "7za"):
+        found = shutil.which(name)
+        if found and found not in sevenz_cands:
+            sevenz_cands.append(found)
+    for sevenz in sevenz_cands:
+        try:
             subprocess.run([sevenz, "x", "-y", f"-o{destdir}", pkgfile],
                            capture_output=True)
             tarname = os.path.join(destdir, "packagesite")
@@ -74,6 +89,8 @@ def extract_packagesite(pkgfile, destdir):
                     os.unlink(cand)
             if os.path.exists(target):
                 return True
+        except OSError:
+            pass
 
     # 4) python zstandard module
     try:
@@ -83,7 +100,10 @@ def extract_packagesite(pkgfile, destdir):
             dctx = zstandard.ZstdDecompressor()
             with dctx.stream_reader(fh) as reader:
                 with tarfile.open(fileobj=reader, mode="r|") as tf:
-                    tf.extractall(destdir)
+                    if "filter" in tarfile.TarFile.extractall.__code__.co_varnames:
+                        tf.extractall(destdir, filter="data")
+                    else:
+                        tf.extractall(destdir)
         return os.path.exists(target)
     except Exception:
         return False
@@ -97,16 +117,32 @@ def fetch(url, dest):
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     if os.path.exists(dest) and os.path.getsize(dest) > 0:
         return "cached"
-    r = subprocess.run(
-        ["curl", "-sfL", "--retry", "5", "--retry-delay", "3",
-         "--max-time", "900", "-o", dest + ".part", url]
-    )
-    if r.returncode != 0:
-        if os.path.exists(dest + ".part"):
-            os.unlink(dest + ".part")
-        return "FAIL"
-    os.replace(dest + ".part", dest)
-    return "ok"
+    part = dest + ".part"
+    if CURL_BIN:
+        try:
+            r = subprocess.run(
+                [CURL_BIN, "-sfL", "--retry", "5", "--retry-delay", "3",
+                 "--max-time", "900", "-o", part, url]
+            )
+            if r.returncode == 0 and os.path.exists(part) and os.path.getsize(part) > 0:
+                os.replace(part, dest)
+                return "ok"
+        except OSError:
+            pass
+        if os.path.exists(part):
+            os.unlink(part)
+    # Fallback to stdlib urllib if curl failed or is unavailable
+    for _ in range(3):
+        try:
+            with urllib.request.urlopen(url, timeout=120) as resp, open(part, "wb") as out:
+                shutil.copyfileobj(resp, out)
+            if os.path.exists(part) and os.path.getsize(part) > 0:
+                os.replace(part, dest)
+                return "ok"
+        except Exception:
+            if os.path.exists(part):
+                os.unlink(part)
+    return "FAIL"
 
 
 def repo_names(version):

@@ -3,3 +3,5 @@ mirror/
 *.iso
 *.img
 *.gz
+__pycache__/
+*.py[cod]

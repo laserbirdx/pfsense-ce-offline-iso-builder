@@ -15,8 +15,8 @@ ISO="${1:?offline ISO}"
 OUT="${2:?output image}"
 
 case "$(uname -s)" in
-Darwin) fsize() { stat -L -f%z "$1"; }; cpus() { sysctl -n hw.ncpu; } ;;
-*)      fsize() { stat -L -c%s "$1"; }; cpus() { nproc 2>/dev/null || echo 4; } ;;
+Darwin|FreeBSD) fsize() { stat -L -f%z "$1"; }; cpus() { sysctl -n hw.ncpu; } ;;
+*)              fsize() { stat -L -c%s "$1"; }; cpus() { nproc 2>/dev/null || echo 4; } ;;
 esac
 human() {
 	awk -v n="$1" 'BEGIN {
@@ -26,6 +26,19 @@ human() {
 		printf "%.1f%s", n, u[i]
 	}'
 }
+
+if [ -z "${PY:-}" ]; then
+	if [ -r "$LIB/deps.sh" ]; then
+		# shellcheck source=/dev/null
+		. "$LIB/deps.sh"
+		detect_platform
+		PY="$(tool_path python3 || true)"
+	else
+		PY="$(command -v python3 || command -v python || true)"
+	fi
+fi
+[ -n "$PY" ] && command -v "$PY" >/dev/null 2>&1 || {
+	echo "python3 (>= 3.6) not found" >&2; exit 1; }
 
 QEMU="${QEMU:-qemu-system-x86_64}"
 QEMU_IMG="${QEMU_IMG:-qemu-img}"
@@ -39,7 +52,7 @@ command -v "$QEMU_IMG" >/dev/null || {
 qemu_path() { printf '%s' "${1//,/,,}"; }
 
 # Pick a free TCP port for the temporary HTTP server unless one is given.
-PORT="${HTTP_PORT:-$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')}"
+PORT="${HTTP_PORT:-$("$PY" -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')}"
 MON="$(mktemp -u "${TMPDIR:-/tmp}/pfmk-mon.XXXXXX")"
 SER="$(mktemp -u "${TMPDIR:-/tmp}/pfmk-ser.XXXXXX")"
 HTTPDIR="$(mktemp -d)"
@@ -60,7 +73,7 @@ echo "== creating memstick image (${MB} MB)"
 rm -f "$OUT"
 "$QEMU_IMG" create -f raw "$OUT" "${MB}M" >/dev/null
 
-( cd "$HTTPDIR" && exec python3 -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1 ) &
+( cd "$HTTPDIR" && exec "$PY" -m http.server "$PORT" --bind 127.0.0.1 >/dev/null 2>&1 ) &
 HTPID=$!
 
 # Use hardware acceleration when available.
@@ -81,8 +94,8 @@ fi
 	-serial "file:$SER" -no-reboot >/dev/null 2>&1 &
 QPID=$!
 
-key() { QEMU_MON="$MON" python3 "$LIB/vmshot.py" keys "$@" >/dev/null 2>&1 || true; }
-run() { QEMU_MON="$MON" python3 "$LIB/vmshot.py" run  "$1" >/dev/null 2>&1 || true; }
+key() { QEMU_MON="$MON" "$PY" "$LIB/vmshot.py" keys "$@" >/dev/null 2>&1 || true; }
+run() { QEMU_MON="$MON" "$PY" "$LIB/vmshot.py" run  "$1" >/dev/null 2>&1 || true; }
 
 echo "== booting the installer (a few minutes)"
 for _ in $(seq 1 60); do

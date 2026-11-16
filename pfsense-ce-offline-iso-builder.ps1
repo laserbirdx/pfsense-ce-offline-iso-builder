@@ -72,8 +72,18 @@ function Die        { param($m) Write-Host "error: $m" -ForegroundColor Red; exi
 
 # Script directory (works with spaces in the path)
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not (Test-Path -LiteralPath (Join-Path $ScriptDir 'pfsense-ce-offline-iso-builder.sh'))) {
-    Die "pfsense-ce-offline-iso-builder.sh not found next to this script ($ScriptDir). Copy the whole repository."
+$RepoRawBase = if ($env:REPO_RAW_BASE) { $env:REPO_RAW_BASE } else { 'https://raw.githubusercontent.com/laserbirdx/pfsense-ce-offline-iso-builder/main' }
+$ShPath = Join-Path $ScriptDir 'pfsense-ce-offline-iso-builder.sh'
+if (-not (Test-Path -LiteralPath $ShPath)) {
+    Write-Info 'pfsense-ce-offline-iso-builder.sh missing, fetching from repository...'
+    try {
+        Invoke-WebRequest -Uri "$RepoRawBase/pfsense-ce-offline-iso-builder.sh" `
+            -OutFile "$ShPath.part" -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+        Move-Item -Force -LiteralPath "$ShPath.part" -Destination $ShPath
+    } catch {
+        Remove-Item -Force -LiteralPath "$ShPath.part" -ErrorAction SilentlyContinue
+        Die "Could not download pfsense-ce-offline-iso-builder.sh. Connect to the internet once or copy the whole repository."
+    }
 }
 
 if (-not $Out)    { $Out    = Join-Path (Get-Location).Path 'out' }

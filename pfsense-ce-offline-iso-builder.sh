@@ -32,6 +32,103 @@ SELF="$(cd -P "$(dirname "$_src")" && pwd)"
 LIB="$SELF/lib"
 unset _src _dir
 
+REPO_RAW_BASE="${REPO_RAW_BASE:-https://raw.githubusercontent.com/laserbirdx/pfsense-ce-offline-iso-builder/main}"
+
+# --- bootstrap lib/ when the .sh was downloaded standalone -----------------
+_bootstrap_fetch() {
+	local url="$1" dst="$2" allow_install="$3" py _sudo=""
+	if command -v curl >/dev/null 2>&1; then
+		curl -fsSL --retry 3 --max-time 30 -o "$dst.part" "$url" 2>/dev/null && [ -s "$dst.part" ] && { mv -f "$dst.part" "$dst"; return 0; }
+		rm -f "$dst.part"
+	fi
+	if command -v wget >/dev/null 2>&1; then
+		wget -q -T 30 -O "$dst.part" "$url" 2>/dev/null && [ -s "$dst.part" ] && { mv -f "$dst.part" "$dst"; return 0; }
+		rm -f "$dst.part"
+	fi
+	for py in python3 python; do
+		command -v "$py" >/dev/null 2>&1 || continue
+		case "$(command -v "$py")" in *WindowsApps*|*windowsapps*) continue ;; esac
+		if "$py" - "$url" "$dst.part" <<'PY' 2>/dev/null && [ -s "$dst.part" ]; then
+import sys
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
+data = urlopen(sys.argv[1], timeout=30).read()
+open(sys.argv[2], "wb").write(data)
+PY
+			mv -f "$dst.part" "$dst"
+			return 0
+		fi
+		rm -f "$dst.part"
+	done
+	if [ "$allow_install" = 1 ]; then
+		if [ "$(id -u 2>/dev/null || echo 0)" != "0" ]; then
+			if command -v sudo >/dev/null 2>&1; then _sudo="sudo"
+			elif command -v doas >/dev/null 2>&1; then _sudo="doas"
+			else return 1
+			fi
+		fi
+		if command -v apt-get >/dev/null 2>&1; then
+			$_sudo apt-get update -qq >/dev/null 2>&1 || true
+			$_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl >/dev/null 2>&1 || true
+		elif command -v dnf >/dev/null 2>&1;      then $_sudo dnf install -y -q curl >/dev/null 2>&1 || true
+		elif command -v microdnf >/dev/null 2>&1; then $_sudo microdnf install -y curl >/dev/null 2>&1 || true
+		elif command -v yum >/dev/null 2>&1;      then $_sudo yum install -y -q curl >/dev/null 2>&1 || true
+		elif command -v pacman >/dev/null 2>&1;   then $_sudo pacman -S --noconfirm --needed curl >/dev/null 2>&1 || true
+		elif command -v zypper >/dev/null 2>&1;   then $_sudo zypper --non-interactive install curl >/dev/null 2>&1 || true
+		elif command -v apk >/dev/null 2>&1;      then $_sudo apk add --quiet curl >/dev/null 2>&1 || true
+		elif command -v xbps-install >/dev/null 2>&1; then $_sudo xbps-install -Sy curl >/dev/null 2>&1 || true
+		elif command -v pkg >/dev/null 2>&1;      then $_sudo env ASSUME_ALWAYS_YES=yes pkg install -y curl >/dev/null 2>&1 || true
+		fi
+		if command -v curl >/dev/null 2>&1; then
+			curl -fsSL --retry 3 --max-time 30 -o "$dst.part" "$url" 2>/dev/null && [ -s "$dst.part" ] && { mv -f "$dst.part" "$dst"; return 0; }
+			rm -f "$dst.part"
+		fi
+	fi
+	return 1
+}
+
+_bootstrap_lib() {
+	local req=(
+		deps.sh space.sh mirror-repo.py pkgsum.py
+		patch-install.py patch-reposetup.py
+		build-memstick.sh mk-memstick.sh patch-serial.sh vmshot.py
+	)
+	local f need=0 allow_install=1 arg
+	for arg in "$@"; do
+		[ "$arg" = "--no-install" ] && allow_install=0
+	done
+	for f in "${req[@]}"; do
+		[ -s "$LIB/$f" ] || { need=1; break; }
+	done
+	[ "$need" = 0 ] && return 0
+
+	if ! mkdir -p "$LIB" 2>/dev/null || [ ! -w "$LIB" ]; then
+		LIB="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/pfsense-ce-offline-iso-builder/lib"
+		mkdir -p "$LIB" || { echo "error: cannot create helper directory: $LIB" >&2; exit 1; }
+		need=0
+		for f in "${req[@]}"; do
+			[ -s "$LIB/$f" ] || { need=1; break; }
+		done
+		[ "$need" = 0 ] && return 0
+	fi
+
+	printf '\033[36m==\033[0m helper files missing in lib/, fetching from repository...\n' >&2
+	for f in "${req[@]}"; do
+		[ -s "$LIB/$f" ] && continue
+		if ! _bootstrap_fetch "$REPO_RAW_BASE/lib/$f" "$LIB/$f" "$allow_install"; then
+			printf '\033[31merror:\033[0m could not download lib/%s from %s\n' "$f" "$REPO_RAW_BASE" >&2
+			printf '       Either connect to the internet once or copy the full repository (including lib/).\n' >&2
+			exit 1
+		fi
+	done
+	chmod +x "$LIB"/*.sh "$LIB"/*.py 2>/dev/null || true
+}
+
+_bootstrap_lib "$@"
+unset -f _bootstrap_fetch _bootstrap_lib
+
 for _m in deps.sh space.sh; do
 	[ -r "$LIB/$_m" ] || { echo "missing module: lib/$_m" >&2; exit 1; }
 	# shellcheck source=/dev/null
@@ -58,13 +155,29 @@ warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
 
 detect_platform
 
-if [ "$PLATFORM" = macos ]; then
-	fsize()  { stat -L -f%z "$1"; }
-	sha256() { shasum -a 256 "$@"; }
+if [ "$PLATFORM" = macos ] || [ "$PLATFORM" = freebsd ]; then
+	fsize() { stat -L -f%z "$1"; }
 else
-	fsize()  { stat -L -c%s "$1"; }
-	sha256() { sha256sum "$@"; }
+	fsize() { stat -L -c%s "$1"; }
 fi
+
+sha256() {
+	if command -v sha256sum >/dev/null 2>&1; then
+		sha256sum "$@"
+	elif command -v shasum >/dev/null 2>&1; then
+		shasum -a 256 "$@"
+	else
+		"$PY" - "$@" <<'PY'
+import hashlib, sys
+for p in sys.argv[1:]:
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    print(f"{h.hexdigest()}  {p}")
+PY
+	fi
+}
 
 human() {
 	awk -v n="$1" 'BEGIN {
@@ -161,7 +274,7 @@ fi
 
 # --- dependencies ----------------------------------------------------------
 NEEDED=(curl python3 xorriso sevenzip)
-if [ "$WANT_MEMSTICK" = 1 ]; then NEEDED+=(qemu); fi
+if [ "$WANT_MEMSTICK" = 1 ]; then NEEDED+=(qemu qemu-img); fi
 if ! ensure_tools "${NEEDED[@]}"; then
 	if [ "$NET_OK" != 1 ]; then
 		die "could not satisfy dependencies (installing them needs an internet connection)"
@@ -173,6 +286,12 @@ CURL="$(tool_path curl)"
 PY="$(tool_path python3)"
 XORRISO="$(tool_path xorriso)"
 SEVENZ="$(tool_path sevenzip)"
+export CURL PY XORRISO SEVENZ
+if [ "$WANT_MEMSTICK" = 1 ]; then
+	QEMU="$(tool_path qemu)"
+	QEMU_IMG="$(tool_path qemu-img)"
+	export QEMU QEMU_IMG
+fi
 [ -f "$LIB/mirror-repo.py" ] || die "lib/mirror-repo.py is missing"
 
 # --- list versions ---------------------------------------------------------
@@ -274,7 +393,15 @@ MIRRORDIR="$(abspath "$MIRRORDIR")"
 if [ "${INSTALLER%.gz}" != "$INSTALLER" ]; then
 	if [ ! -f "${INSTALLER%.gz}" ]; then
 		info "decompressing installer"
-		gunzip -kf "$INSTALLER" || die "could not decompress the installer"
+		if command -v gunzip >/dev/null 2>&1; then
+			gunzip -kf "$INSTALLER" || die "could not decompress the installer"
+		else
+			"$PY" - "$INSTALLER" "${INSTALLER%.gz}" <<'PY' || die "could not decompress the installer"
+import gzip, shutil, sys
+with gzip.open(sys.argv[1], "rb") as fin, open(sys.argv[2], "wb") as fout:
+    shutil.copyfileobj(fin, fout)
+PY
+		fi
 	fi
 	INSTALLER="${INSTALLER%.gz}"
 fi
@@ -296,8 +423,42 @@ fi
 # --- inspect the installer -------------------------------------------------
 "$SEVENZ" e -so "$INSTALLER" bin/sh > "$WORK/_sh" 2>/dev/null \
 	|| die "could not read the ISO: $INSTALLER"
-INST_FBSD="$(LC_ALL=C file "$WORK/_sh" 2>/dev/null \
-	| grep -oE 'FreeBSD [0-9]+\.[0-9]+' | head -1 | awk '{print $2}')"
+# Read FreeBSD ABI version directly from ELF PT_NOTE (no external `file` tool needed).
+INST_FBSD="$("$PY" - "$WORK/_sh" <<'PY' 2>/dev/null || true
+import struct, sys
+data = open(sys.argv[1], "rb").read()
+if data[:4] == b"\x7fELF":
+    endian = "<" if data[5] == 1 else ">"
+    if data[4] == 2:
+        phoff, = struct.unpack_from(endian + "Q", data, 32)
+        phentsize, phnum = struct.unpack_from(endian + "HH", data, 54)
+        fmt, off_i, sz_i = endian + "IIQQQQQQ", 2, 5
+    else:
+        phoff, = struct.unpack_from(endian + "I", data, 28)
+        phentsize, phnum = struct.unpack_from(endian + "HH", data, 42)
+        fmt, off_i, sz_i = endian + "IIIIIIII", 1, 4
+    for i in range(phnum):
+        ph = struct.unpack_from(fmt, data, phoff + i * phentsize)
+        if ph[0] != 4:
+            continue
+        p, end = ph[off_i], ph[off_i] + ph[sz_i]
+        while p + 12 <= end:
+            nsz, dsz, ntype = struct.unpack_from(endian + "III", data, p)
+            p += 12
+            name = data[p:p + nsz]
+            p += (nsz + 3) & ~3
+            desc = data[p:p + dsz]
+            p += (dsz + 3) & ~3
+            if name.rstrip(b"\x00") == b"FreeBSD" and ntype == 1 and len(desc) >= 4:
+                v, = struct.unpack_from(endian + "I", desc, 0)
+                print(f"{v // 100000}.{(v // 1000) % 100}")
+                sys.exit(0)
+PY
+)"
+if [ -z "$INST_FBSD" ] && command -v file >/dev/null 2>&1; then
+	INST_FBSD="$(LC_ALL=C file "$WORK/_sh" 2>/dev/null \
+		| grep -oE 'FreeBSD [0-9]+\.[0-9]+' | head -1 | awk '{print $2}')"
+fi
 INST_MAJOR="${INST_FBSD%%.*}"
 rm -f "$WORK/_sh"
 [ -n "$INST_MAJOR" ] || die "could not determine the installer's FreeBSD version; is this the right ISO?"
@@ -556,7 +717,7 @@ EOF
 
 		if [ "$WANT_MEMSTICK" = 1 ]; then
 			IMG_OUT="$OUTDIR/pfSense-CE-offline-memstick${SUFFIX}-${VER}-amd64.img"
-			if "$LIB/build-memstick.sh" "$ISO_OUT" "$IMG_OUT"; then
+			if bash "$LIB/build-memstick.sh" "$ISO_OUT" "$IMG_OUT"; then
 				BUILT+=("$IMG_OUT")
 			else
 				warn "could not build the memstick image; the ISO is ready"
