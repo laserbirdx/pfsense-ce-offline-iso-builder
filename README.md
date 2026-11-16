@@ -178,14 +178,11 @@ For installations that stay offline this is irrelevant.
 
 ## How it works
 
-The Netgate Installer flow:
+<p align="center">
+  <img src="assets/how-it-works.svg" alt="How pfsense-ce-offline-iso-builder works — Build &amp; Offline Install Flow" width="100%">
+</p>
 
-```
-configure WAN → connectivity check → Plus eligibility check
-   → partition disk → fetch repo definitions (repoc) → set up repo → install via pkg
-```
-
-Repositories use `pkg+https://pkg.pfsense.org/...` with `mirror_type: srv`; the
+Online repositories use `pkg+https://pkg.pfsense.org/...` with `mirror_type: srv`; the
 actual servers are resolved from DNS SRV records (`pkg00-atx.netgate.com`,
 `pkg01-atx.netgate.com`).
 

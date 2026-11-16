@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 1264" width="880" height="1264" role="img" aria-labelledby="title desc">
+  <title id="title">pfsense-ce-offline-iso-builder — Architecture &amp; Offline Installer Flow</title>
+  <desc id="desc">Two-phase diagram showing how pfsense-ce-offline-iso-builder builds offline ISO and USB media, and how each step of the modified offline installer compares to the stock online Netgate Installer.</desc>
+  <defs>
+    <style>
+      .sans { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, 'Helvetica Neue', Arial, sans-serif; }
+      .mono { font-family: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+    </style>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#09101d"/>
+      <stop offset="100%" stop-color="#0d1628"/>
+    </linearGradient>
+    <linearGradient id="cyanHeader" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="engineBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0c233a"/>
+      <stop offset="100%" stop-color="#0a1c30"/>
+    </linearGradient>
+    <linearGradient id="outBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b2826"/>
+      <stop offset="100%" stop-color="#0a1f2c"/>
+    </linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#1e293b" opacity="0.55"/>
+    </pattern>
+    <marker id="arrCyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrEmerald" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#34d399"/>
+    </marker>
+  </defs>
+
+  <!-- Outer canvas -->
+  <rect x="0" y="0" width="880" height="1264" rx="18" fill="url(#bgGrad)"/>
+  <rect x="0" y="0" width="880" height="1264" rx="18" fill="url(#grid)"/>
+  <rect x="1" y="1" width="878" height="1262" rx="17" fill="none" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Top title bar -->
+  <rect x="24" y="24" width="5" height="44" rx="2.5" fill="url(#cyanHeader)"/>
+  <text x="40" y="45" class="sans" font-size="20" font-weight="800" fill="#f8fafc" letter-spacing="0.3">HOW IT WORKS — BUILD &amp; OFFLINE INSTALL FLOW</text>
+  <text x="40" y="66" class="sans" font-size="13.5" fill="#94a3b8">How the builder constructs offline media and what the patched ISO does on an air-gapped target</text>
+
+  <!-- =================================================================== -->
+  <!-- PHASE 1: BUILD MEDIA                                                -->
+  <!-- =================================================================== -->
+  <rect x="24" y="88" width="832" height="366" rx="14" fill="#0f172a" fill-opacity="0.92" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="44" y="104" width="290" height="26" rx="13" fill="#0c2d48" stroke="#0ea5e9" stroke-width="1"/>
+  <text x="189" y="121" text-anchor="middle" class="sans" font-size="11.5" font-weight="700" fill="#7dd3fc" letter-spacing="0.8">PHASE 1 · BUILD MEDIA (ONLINE ONCE)</text>
+  <text x="836" y="121" text-anchor="end" class="sans" font-size="12" fill="#64748b">Runs on Linux · macOS · Windows (WSL / MSYS2)</text>
+
+  <!-- Input 1: Netgate Installer ISO -->
+  <rect x="44" y="144" width="380" height="78" rx="10" fill="#131f35" stroke="#334155" stroke-width="1.5"/>
+  <circle cx="66" cy="166" r="6" fill="#38bdf8"/>
+  <text x="80" y="170" class="sans" font-size="14.5" font-weight="700" fill="#f1f5f9">Official Netgate Installer ISO (v1.2+)</text>
+  <text x="60" y="191" class="mono" font-size="11.5" fill="#7dd3fc">shop.netgate.com · FreeBSD base &amp; ABI checked</text>
+  <text x="60" y="209" class="sans" font-size="12" fill="#94a3b8">Extracts UEFI boot image + installer backend scripts</text>
+
+  <!-- Input 2: Official pkg servers -->
+  <rect x="456" y="144" width="380" height="78" rx="10" fill="#131f35" stroke="#334155" stroke-width="1.5"/>
+  <circle cx="478" cy="166" r="6" fill="#38bdf8"/>
+  <text x="492" y="170" class="sans" font-size="14.5" font-weight="700" fill="#f1f5f9">Official pfSense CE pkg Servers</text>
+  <text x="472" y="191" class="mono" font-size="11.5" fill="#7dd3fc">pkg00/01-atx.netgate.com (-core + main)</text>
+  <text x="472" y="209" class="sans" font-size="12" fill="#94a3b8">Mirrors ~1.4 GB · BLAKE2b verified · signatures kept</text>
+
+  <!-- Arrows from inputs to builder -->
+  <path d="M 234 222 L 234 250" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrCyan)"/>
+  <path d="M 646 222 L 646 250" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrCyan)"/>
+
+  <!-- Builder Engine Box -->
+  <rect x="44" y="254" width="792" height="106" rx="12" fill="url(#engineBg)" stroke="#38bdf8" stroke-width="1.8"/>
+  <text x="440" y="278" text-anchor="middle" class="sans" font-size="14.5" font-weight="800" fill="#e0f2fe">pfsense-ce-offline-iso-builder — Offline Overlay &amp; Script Patcher</text>
+
+  <!-- 3 inner cards inside Builder Engine -->
+  <rect x="60" y="290" width="244" height="56" rx="8" fill="#091829" stroke="#1e4976" stroke-width="1"/>
+  <text x="182" y="311" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#38bdf8">/offline/pkg + /offline/repos</text>
+  <text x="182" y="330" text-anchor="middle" class="sans" font-size="11.5" fill="#cbd5e1">Signed pkg mirror + file:// repo 0000</text>
+
+  <rect x="318" y="290" width="244" height="56" rx="8" fill="#091829" stroke="#1e4976" stroke-width="1"/>
+  <text x="440" y="311" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#38bdf8">repoc-static + netconfig</text>
+  <text x="440" y="330" text-anchor="middle" class="sans" font-size="11.5" fill="#cbd5e1">Offline stubs skip WAN, NTP &amp; API</text>
+
+  <rect x="576" y="290" width="244" height="56" rx="8" fill="#091829" stroke="#1e4976" stroke-width="1"/>
+  <text x="698" y="311" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#38bdf8">pfSense-install + repo-setup</text>
+  <text x="698" y="330" text-anchor="middle" class="sans" font-size="11.5" fill="#cbd5e1">nullfs chroot mount + URL restore</text>
+
+  <!-- Arrows from builder to outputs -->
+  <path d="M 234 360 L 234 384" stroke="#34d399" stroke-width="2" fill="none" marker-end="url(#arrEmerald)"/>
+  <path d="M 646 360 L 646 384" stroke="#34d399" stroke-width="2" fill="none" marker-end="url(#arrEmerald)"/>
+
+  <!-- Output 1: Offline ISO -->
+  <rect x="44" y="388" width="380" height="52" rx="10" fill="url(#outBg)" stroke="#10b981" stroke-width="1.5"/>
+  <text x="62" y="410" class="sans" font-size="14" font-weight="700" fill="#ecfdf5">Offline ISO (VGA &amp; Serial)</text>
+  <text x="62" y="428" class="mono" font-size="11.5" fill="#6ee7b7">xorriso · Hybrid BIOS + UEFI bootable</text>
+
+  <!-- Output 2: Offline Memstick -->
+  <rect x="456" y="388" width="380" height="52" rx="10" fill="url(#outBg)" stroke="#10b981" stroke-width="1.5"/>
+  <text x="474" y="410" class="sans" font-size="14" font-weight="700" fill="#ecfdf5">Offline USB Memstick (.img, optional)</text>
+  <text x="474" y="428" class="mono" font-size="11.5" fill="#6ee7b7">QEMU · UFS label pfSense_Install · /rescue links</text>
+
+  <!-- =================================================================== -->
+  <!-- PHASE 2: RUNTIME COMPARISON                                         -->
+  <!-- =================================================================== -->
+  <rect x="24" y="472" width="832" height="768" rx="14" fill="#0f172a" fill-opacity="0.92" stroke="#1e293b" stroke-width="1.5"/>
+  <rect x="44" y="488" width="396" height="26" rx="13" fill="#0b2e28" stroke="#10b981" stroke-width="1"/>
+  <text x="242" y="505" text-anchor="middle" class="sans" font-size="11.5" font-weight="700" fill="#6ee7b7" letter-spacing="0.8">PHASE 2 · BOOTING ON TARGET HARDWARE (STEP-BY-STEP)</text>
+  <text x="836" y="505" text-anchor="end" class="sans" font-size="12" fill="#64748b">Stock Online vs. Patched Offline ISO</text>
+
+  <!-- Column Headers -->
+  <rect x="44" y="528" width="364" height="44" rx="9" fill="#231420" stroke="#9f1239" stroke-width="1.3"/>
+  <text x="60" y="555" class="sans" font-size="14" font-weight="700" fill="#fda4af">Stock Netgate Installer</text>
+  <rect x="270" y="539" width="124" height="22" rx="11" fill="#4c0519"/>
+  <text x="332" y="554" text-anchor="middle" class="sans" font-size="10.5" font-weight="700" fill="#fb7185">NEEDS INTERNET</text>
+
+  <rect x="472" y="528" width="364" height="44" rx="9" fill="#0b2926" stroke="#059669" stroke-width="1.3"/>
+  <text x="488" y="555" class="sans" font-size="14" font-weight="700" fill="#a7f3d0">Our Offline ISO / Memstick</text>
+  <rect x="698" y="539" width="124" height="22" rx="11" fill="#064e3b"/>
+  <text x="760" y="554" text-anchor="middle" class="sans" font-size="10.5" font-weight="700" fill="#34d399">100% AIR-GAPPED</text>
+  <path d="M 440 645 L 440 707" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrCyan)"/>
+  <path d="M 440 743 L 440 805" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrCyan)"/>
+  <path d="M 440 841 L 440 903" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrCyan)"/>
+  <path d="M 440 939 L 440 1001" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrCyan)"/>
+  <path d="M 440 1037 L 440 1099" stroke="#38bdf8" stroke-width="2" fill="none" marker-end="url(#arrCyan)"/>
+  <line x1="408" y1="628" x2="423" y2="628" stroke="#475569" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <path d="M 457 628 L 469 628" stroke="#34d399" stroke-width="1.8" fill="none" marker-end="url(#arrEmerald)"/>
+  <rect x="44" y="586" width="364" height="84" rx="10" fill="#161d2d" stroke="#334155" stroke-width="1.2"/>
+  <text x="60" y="608" class="sans" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="0.5">STEP 1 · WAN NETWORK SETUP</text>
+  <text x="60" y="631" class="sans" font-size="13.5" font-weight="700" fill="#fda4af">Prompts user to configure WAN</text>
+  <text x="60" y="652" class="sans" font-size="12" fill="#94a3b8">Needs live DHCP, Static IP, or PPPoE link</text>
+  <circle cx="440" cy="628" r="16" fill="#0c2d48" stroke="#38bdf8" stroke-width="2"/>
+  <text x="440" y="633" text-anchor="middle" class="sans" font-size="13" font-weight="800" fill="#f8fafc">1</text>
+  <rect x="472" y="586" width="364" height="84" rx="10" fill="#0c2228" stroke="#10b981" stroke-width="1.4"/>
+  <text x="488" y="608" class="sans" font-size="11" font-weight="700" fill="#5eead4" letter-spacing="0.5">STEP 1 · WAN NETWORK SETUP</text>
+  <text x="488" y="631" class="mono" font-size="12.5" font-weight="700" fill="#ecfdf5">cli/pfSense-netconfig replaced</text>
+  <text x="488" y="652" class="sans" font-size="12" fill="#cbd5e1">Auto-selects first NIC &amp; feeds WAN-ASSIGNED</text>
+  <line x1="408" y1="726" x2="423" y2="726" stroke="#475569" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <path d="M 457 726 L 469 726" stroke="#34d399" stroke-width="1.8" fill="none" marker-end="url(#arrEmerald)"/>
+  <rect x="44" y="684" width="364" height="84" rx="10" fill="#161d2d" stroke="#334155" stroke-width="1.2"/>
+  <text x="60" y="706" class="sans" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="0.5">STEP 2 · CONNECTIVITY CHECK</text>
+  <text x="60" y="729" class="sans" font-size="13.5" font-weight="700" fill="#fda4af">Syncs NTP &amp; probes Netgate</text>
+  <text x="60" y="750" class="sans" font-size="12" fill="#94a3b8">Halts installation if WAN has no internet</text>
+  <circle cx="440" cy="726" r="16" fill="#0c2d48" stroke="#38bdf8" stroke-width="2"/>
+  <text x="440" y="731" text-anchor="middle" class="sans" font-size="13" font-weight="800" fill="#f8fafc">2</text>
+  <rect x="472" y="684" width="364" height="84" rx="10" fill="#0c2228" stroke="#10b981" stroke-width="1.4"/>
+  <text x="488" y="706" class="sans" font-size="11" font-weight="700" fill="#5eead4" letter-spacing="0.5">STEP 2 · CONNECTIVITY CHECK</text>
+  <text x="488" y="729" class="mono" font-size="12.5" font-weight="700" fill="#ecfdf5">pfSense-connectivity-check → exit 0</text>
+  <text x="488" y="750" class="sans" font-size="12" fill="#cbd5e1">Feeds CONNECTIVITY-CHECK state immediately</text>
+  <line x1="408" y1="824" x2="423" y2="824" stroke="#475569" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <path d="M 457 824 L 469 824" stroke="#34d399" stroke-width="1.8" fill="none" marker-end="url(#arrEmerald)"/>
+  <rect x="44" y="782" width="364" height="84" rx="10" fill="#161d2d" stroke="#334155" stroke-width="1.2"/>
+  <text x="60" y="804" class="sans" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="0.5">STEP 3 · REPO DISCOVERY (REPOC)</text>
+  <text x="60" y="827" class="sans" font-size="13.5" font-weight="700" fill="#fda4af">Contacts Netgate API online</text>
+  <text x="60" y="848" class="sans" font-size="12" fill="#94a3b8">Checks Plus license &amp; fetches remote .conf</text>
+  <circle cx="440" cy="824" r="16" fill="#0c2d48" stroke="#38bdf8" stroke-width="2"/>
+  <text x="440" y="829" text-anchor="middle" class="sans" font-size="13" font-weight="800" fill="#f8fafc">3</text>
+  <rect x="472" y="782" width="364" height="84" rx="10" fill="#0c2228" stroke="#10b981" stroke-width="1.4"/>
+  <text x="488" y="804" class="sans" font-size="11" font-weight="700" fill="#5eead4" letter-spacing="0.5">STEP 3 · REPO DISCOVERY (REPOC)</text>
+  <text x="488" y="827" class="mono" font-size="12.5" font-weight="700" fill="#ecfdf5">Runs pfSense-repoc-static stub</text>
+  <text x="488" y="848" class="sans" font-size="12" fill="#cbd5e1">Selects CE &amp; copies /offline/repos (ID 0000)</text>
+  <line x1="408" y1="922" x2="423" y2="922" stroke="#475569" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <path d="M 457 922 L 469 922" stroke="#34d399" stroke-width="1.8" fill="none" marker-end="url(#arrEmerald)"/>
+  <rect x="44" y="880" width="364" height="84" rx="10" fill="#161d2d" stroke="#334155" stroke-width="1.2"/>
+  <text x="60" y="902" class="sans" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="0.5">STEP 4 · DISK &amp; REPO STAGING</text>
+  <text x="60" y="925" class="sans" font-size="13.5" font-weight="700" fill="#fda4af">Partitions ZFS/UFS &amp; sets SRV URL</text>
+  <text x="60" y="946" class="sans" font-size="12" fill="#94a3b8">Points pkg at pkg+https://pkg.pfsense.org</text>
+  <circle cx="440" cy="922" r="16" fill="#0c2d48" stroke="#38bdf8" stroke-width="2"/>
+  <text x="440" y="927" text-anchor="middle" class="sans" font-size="13" font-weight="800" fill="#f8fafc">4</text>
+  <rect x="472" y="880" width="364" height="84" rx="10" fill="#0c2228" stroke="#10b981" stroke-width="1.4"/>
+  <text x="488" y="902" class="sans" font-size="11" font-weight="700" fill="#5eead4" letter-spacing="0.5">STEP 4 · DISK &amp; REPO STAGING</text>
+  <text x="488" y="925" class="mono" font-size="12.5" font-weight="700" fill="#ecfdf5">Patched pfSense-repo-setup</text>
+  <text x="488" y="946" class="sans" font-size="12" fill="#cbd5e1">Stages file:///offline/pkg defs inside chroot</text>
+  <line x1="408" y1="1020" x2="423" y2="1020" stroke="#475569" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <path d="M 457 1020 L 469 1020" stroke="#34d399" stroke-width="1.8" fill="none" marker-end="url(#arrEmerald)"/>
+  <rect x="44" y="978" width="364" height="84" rx="10" fill="#161d2d" stroke="#334155" stroke-width="1.2"/>
+  <text x="60" y="1000" class="sans" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="0.5">STEP 5 · PACKAGE INSTALLATION</text>
+  <text x="60" y="1023" class="sans" font-size="13.5" font-weight="700" fill="#fda4af">Downloads ~1.4 GB live over WAN</text>
+  <text x="60" y="1044" class="sans" font-size="12" fill="#94a3b8">Fails in offline rooms or on unstable links</text>
+  <circle cx="440" cy="1020" r="16" fill="#0c2d48" stroke="#38bdf8" stroke-width="2"/>
+  <text x="440" y="1025" text-anchor="middle" class="sans" font-size="13" font-weight="800" fill="#f8fafc">5</text>
+  <rect x="472" y="978" width="364" height="84" rx="10" fill="#0c2228" stroke="#10b981" stroke-width="1.4"/>
+  <text x="488" y="1000" class="sans" font-size="11" font-weight="700" fill="#5eead4" letter-spacing="0.5">STEP 5 · PACKAGE INSTALLATION</text>
+  <text x="488" y="1023" class="mono" font-size="12.5" font-weight="700" fill="#ecfdf5">nullfs bind-mounts /offline/pkg (ro)</text>
+  <text x="488" y="1044" class="sans" font-size="12" fill="#cbd5e1">Installs locally · verifies official pkg sigs</text>
+  <line x1="408" y1="1118" x2="423" y2="1118" stroke="#475569" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <path d="M 457 1118 L 469 1118" stroke="#34d399" stroke-width="1.8" fill="none" marker-end="url(#arrEmerald)"/>
+  <rect x="44" y="1076" width="364" height="84" rx="10" fill="#161d2d" stroke="#334155" stroke-width="1.2"/>
+  <text x="60" y="1098" class="sans" font-size="11" font-weight="700" fill="#94a3b8" letter-spacing="0.5">STEP 6 · POST-INSTALL &amp; REBOOT</text>
+  <text x="60" y="1121" class="sans" font-size="13.5" font-weight="700" fill="#fda4af">Leaves online repo config &amp; reboots</text>
+  <text x="60" y="1142" class="sans" font-size="12" fill="#94a3b8">Target boots into installed pfSense CE</text>
+  <circle cx="440" cy="1118" r="16" fill="#0c2d48" stroke="#38bdf8" stroke-width="2"/>
+  <text x="440" y="1123" text-anchor="middle" class="sans" font-size="13" font-weight="800" fill="#f8fafc">6</text>
+  <rect x="472" y="1076" width="364" height="84" rx="10" fill="#0c2228" stroke="#10b981" stroke-width="1.4"/>
+  <text x="488" y="1098" class="sans" font-size="11" font-weight="700" fill="#5eead4" letter-spacing="0.5">STEP 6 · POST-INSTALL &amp; REBOOT</text>
+  <text x="488" y="1121" class="mono" font-size="12.5" font-weight="700" fill="#ecfdf5">Restores official online repo URL</text>
+  <text x="488" y="1142" class="sans" font-size="12" fill="#cbd5e1">Unmounts /offline/pkg cleanly &amp; reboots</text>
+  <rect x="44" y="1176" width="792" height="44" rx="9" fill="#091829" stroke="#1e3a5f" stroke-width="1"/>
+  <text x="440" y="1203" text-anchor="middle" class="sans" font-size="12.5" font-weight="600" fill="#93c5fd">✓ Official pkg signatures verified unmodified   ·   ✓ ABI &amp; UFS label pitfalls handled   ·   ✓ Zero Netgate binaries in repo</text>
+</svg>
