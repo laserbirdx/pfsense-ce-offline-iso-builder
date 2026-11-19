@@ -4,7 +4,12 @@
 
 # pfsense-ce-offline-iso-builder
 
-![target: pfSense CE 2.8+](https://img.shields.io/badge/target-pfSense%20CE%202.8%2B-212121?logo=pfsense&logoColor=white) ![OS: FreeBSD / Shell](https://img.shields.io/badge/OS-FreeBSD%20%2F%20Shell-AB2B28?logo=freebsd&logoColor=white) ![mode: 100% Offline ISO](https://img.shields.io/badge/mode-100%25%20Offline%20ISO-brightgreen) ![license: MIT](https://img.shields.io/badge/license-MIT-green)
+<p align="center">
+  <img src="https://img.shields.io/badge/target-pfSense%20CE%202.8%2B-212121?logo=pfsense&logoColor=white" alt="target: pfSense CE 2.8+" />
+  <img src="https://img.shields.io/badge/OS-FreeBSD%20%2F%20Shell-AB2B28?logo=freebsd&logoColor=white" alt="OS: FreeBSD / Shell" />
+  <img src="https://img.shields.io/badge/mode-100%25%20Offline%20ISO-brightgreen" alt="mode: 100% Offline ISO" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="license: MIT" />
+</p>
 
 Builds **fully offline** installation media for pfSense CE.
 
