@@ -4,6 +4,8 @@
 
 # pfsense-ce-offline-iso-builder
 
+![target: pfSense CE 2.8+](https://img.shields.io/badge/target-pfSense%20CE%202.8%2B-212121?logo=pfsense&logoColor=white) ![OS: FreeBSD / Shell](https://img.shields.io/badge/OS-FreeBSD%20%2F%20Shell-AB2B28?logo=freebsd&logoColor=white) ![mode: 100% Offline ISO](https://img.shields.io/badge/mode-100%25%20Offline%20ISO-brightgreen) ![license: MIT](https://img.shields.io/badge/license-MIT-green)
+
 Builds **fully offline** installation media for pfSense CE.
 
 Starting with 2.8.0, Netgate only ships the **Netgate Installer** for CE: a
