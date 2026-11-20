@@ -8,9 +8,12 @@
   <img src="https://img.shields.io/badge/target-pfSense%20CE%202.8%2B-212121?logo=pfsense&logoColor=white" alt="target: pfSense CE 2.8+" />
   <img src="https://img.shields.io/badge/OS-FreeBSD%20%2F%20Shell-AB2B28?logo=freebsd&logoColor=white" alt="OS: FreeBSD / Shell" />
   <img src="https://img.shields.io/badge/mode-100%25%20Offline%20ISO-brightgreen" alt="mode: 100% Offline ISO" />
+  <img src="https://img.shields.io/badge/tested-pfSense%20CE%202.9.2%20%28UEFI%20%26%20MBR%29-success" alt="tested: pfSense CE 2.9.2 (UEFI &amp; MBR)" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license: MIT" />
 </p>
 
+> [!NOTE]
+> **pfSense CE 2.9.2 Verified:** Tested and confirmed working with the newly released **pfSense CE 2.9.2** — fully offline installation completes smoothly on both **UEFI** and **Legacy BIOS / MBR** systems.
 Builds **fully offline** installation media for pfSense CE.
 
 Starting with 2.8.0, Netgate only ships the **Netgate Installer** for CE: a
